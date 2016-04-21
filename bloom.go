@@ -3,6 +3,7 @@ package blooms
 import (
 	"hash"
 	"math"
+	"sync"
 
 	"github.com/spaolacci/murmur3"
 )
@@ -11,6 +12,8 @@ var defaultHasher = murmur3.New64()
 
 // baseFilter is base for variety of filters
 type baseFilter struct {
+	mu sync.RWMutex
+	// Bit map slice
 	bits []uint8
 	// Number of hash functions
 	k int
@@ -54,6 +57,8 @@ func (b *baseFilter) Add(element []byte) {
 	if b.s != 0 {
 		size = b.s
 	}
+	b.mu.Lock()
+	defer b.mu.Unlock()
 	for i := 0; i < b.k; i++ {
 		idx := getIndex(h1, h2, i, size) + (i * b.s)
 		// Increment counter up to 255
