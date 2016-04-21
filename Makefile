@@ -10,7 +10,7 @@ setup:
 		go get ./...
 
 test:
-		go test -v ./...
+		./go_test.sh
 
 cover:
 		go test -v -coverprofile=coverage.txt -covermode=count ./

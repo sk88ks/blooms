@@ -20,20 +20,6 @@ func NewCountingFilter(filterSize, hasherNumber int, hasher hash.Hash64) *Counti
 	}
 }
 
-// Add adds a new element into bloomfilter
-func (c *CountingFilter) Add(element []byte) {
-	h := c.createHash(element)
-	h1, h2 := divideHash(h)
-	for i := 0; i < c.k; i++ {
-		idx := getIndex(h1, h2, i, len(c.bits))
-		// Increment counter up to 255
-		if c.bits[idx] < 0xFF {
-			c.bits[idx]++
-		}
-	}
-	c.n++
-}
-
 // Remove removes a element from counting filter
 func (c *CountingFilter) Remove(element []byte) {
 	h := c.createHash(element)

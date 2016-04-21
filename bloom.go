@@ -56,7 +56,10 @@ func (b *baseFilter) Add(element []byte) {
 	}
 	for i := 0; i < b.k; i++ {
 		idx := getIndex(h1, h2, i, size) + (i * b.s)
-		b.bits[idx] = 1
+		// Increment counter up to 255
+		if b.bits[idx] < 0xFF {
+			b.bits[idx]++
+		}
 	}
 	b.n++
 }
