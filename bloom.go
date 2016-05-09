@@ -1,7 +1,8 @@
 package blooms
 
 import (
-	"hash"
+	"bytes"
+	"encoding/gob"
 	"math"
 	"sync"
 
@@ -21,8 +22,36 @@ type baseFilter struct {
 	n int
 	// Number of element per a slice
 	s int
-	// hasher is hash function
-	hasher hash.Hash64
+}
+
+// baseGobs is gob stream receiver
+type baseGobs struct {
+	Bits []uint8
+	K    int
+	N    int
+	S    int
+}
+
+// gobEncode encodes filter to gob stream
+func gobEncode(data interface{}) ([]byte, error) {
+	var buf bytes.Buffer
+	enc := gob.NewEncoder(&buf)
+	err := enc.Encode(data)
+	if err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+// gobDecode encodes filter to gob stream
+func gobDecode(data []byte, dst interface{}) error {
+	buf := bytes.NewBuffer(data)
+	dec := gob.NewDecoder(buf)
+	err := dec.Decode(dst)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func divideHash(h uint64) (h1 uint32, h2 uint32) {
@@ -39,10 +68,7 @@ func getIndex(h1, h2 uint32, i, size int) int {
 
 // createHash creats 64bit hash
 func (b *baseFilter) createHash(element []byte) uint64 {
-	hasher := b.hasher
-	if hasher == nil {
-		hasher = defaultHasher
-	}
+	hasher := defaultHasher
 	hasher.Reset()
 	hasher.Write(element)
 	return hasher.Sum64()
@@ -87,18 +113,41 @@ func (b *baseFilter) Has(element []byte) bool {
 	return true
 }
 
+func (b *baseFilter) toGobs() *baseGobs {
+	return &baseGobs{
+		Bits: b.bits,
+		K:    b.k,
+		N:    b.n,
+		S:    b.s,
+	}
+}
+
+func (b *baseGobs) toFilter() *baseFilter {
+	return &baseFilter{
+		bits: b.Bits,
+		k:    b.K,
+		n:    b.N,
+		s:    b.S,
+	}
+}
+
+// GobEncode encodes data to gobs stream
+func (b *baseFilter) GobEncode() ([]byte, error) {
+	data := b.toGobs()
+	return gobEncode(data)
+}
+
 // BloomFilter is basic implementation of bloomfilter
 type BloomFilter struct {
 	*baseFilter
 }
 
 // New creates a new bloomfilter instance
-func New(filterSize, hasherNumber int, hasher hash.Hash64) *BloomFilter {
+func New(filterSize, hasherNumber int) *BloomFilter {
 	return &BloomFilter{
 		&baseFilter{
-			bits:   make([]uint8, filterSize),
-			k:      hasherNumber,
-			hasher: hasher,
+			bits: make([]uint8, filterSize),
+			k:    hasherNumber,
 		},
 	}
 }
@@ -106,4 +155,16 @@ func New(filterSize, hasherNumber int, hasher hash.Hash64) *BloomFilter {
 // GetFalsePositiveIncidence gets the incidence of false positive
 func (b *BloomFilter) GetFalsePositiveIncidence() float64 {
 	return math.Pow((1 - math.Exp(float64(-b.k*b.n)/float64(len(b.bits)))), float64(b.k))
+}
+
+// GobDecode decodes gob stream
+func (b *BloomFilter) GobDecode(data []byte) error {
+	var bg baseGobs
+	err := gobDecode(data, &bg)
+	if err != nil {
+		return err
+	}
+
+	b.baseFilter = bg.toFilter()
+	return nil
 }

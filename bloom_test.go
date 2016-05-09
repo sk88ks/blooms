@@ -1,7 +1,6 @@
 package blooms
 
 import (
-	"hash/fnv"
 	"testing"
 
 	"github.com/satori/go.uuid"
@@ -14,7 +13,7 @@ func TestNew(t *testing.T) {
 		k := 5
 
 		Convey("When creating a new bloom filter", func() {
-			b := New(m, k, nil)
+			b := New(m, k)
 
 			Convey("Then created instance should be expected", func() {
 				So(b, ShouldNotBeNil)
@@ -58,12 +57,10 @@ func TestBaseFilter_Add(t *testing.T) {
 	Convey("Given base filter with custom hasher", t, func() {
 		m := 128
 		k := 5
-		hasher := fnv.New64()
 
 		b := &baseFilter{
-			bits:   make([]uint8, m),
-			k:      k,
-			hasher: hasher,
+			bits: make([]uint8, m),
+			k:    k,
 		}
 
 		Convey("When adding a new element", func() {
@@ -87,14 +84,12 @@ func TestBaseFilter_Add(t *testing.T) {
 	Convey("Given base filter with partition", t, func() {
 		m := 128
 		k := 5
-		hasher := fnv.New64()
 		s := int(m / k)
 
 		b := &baseFilter{
-			bits:   make([]uint8, m),
-			k:      k,
-			hasher: hasher,
-			s:      s,
+			bits: make([]uint8, m),
+			k:    k,
+			s:    s,
 		}
 
 		Convey("When adding a new element", func() {
@@ -156,12 +151,10 @@ func TestBaseFilter_Has(t *testing.T) {
 	Convey("Given base filter with custom hasher", t, func() {
 		m := 128
 		k := 5
-		hasher := fnv.New64()
 
 		b := &baseFilter{
-			bits:   make([]uint8, m),
-			k:      k,
-			hasher: hasher,
+			bits: make([]uint8, m),
+			k:    k,
 		}
 
 		e := []byte("test")
@@ -189,14 +182,12 @@ func TestBaseFilter_Has(t *testing.T) {
 	Convey("Given base filter with partition", t, func() {
 		m := 128
 		k := 5
-		hasher := fnv.New64()
 		s := int(m / k)
 
 		b := &baseFilter{
-			bits:   make([]uint8, m),
-			k:      k,
-			hasher: hasher,
-			s:      s,
+			bits: make([]uint8, m),
+			k:    k,
+			s:    s,
 		}
 
 		e := []byte("test")
@@ -227,7 +218,7 @@ func TestBloomFilter_GetFalsePositiveIncidence(t *testing.T) {
 		m := 128
 		k := 2
 
-		b := New(m, k, nil)
+		b := New(m, k)
 
 		for i := 0; i < 200; i++ {
 			elm := uuid.NewV4().Bytes()
@@ -244,4 +235,54 @@ func TestBloomFilter_GetFalsePositiveIncidence(t *testing.T) {
 		})
 	})
 
+}
+
+func TestBaseFilter_GobEncode(t *testing.T) {
+	Convey("Given bloom filter", t, func() {
+		m := 128
+		k := 2
+
+		b := New(m, k)
+
+		e := []byte("test")
+		b.Add(e)
+
+		Convey("When converting gobs stream", func() {
+			buf, err := b.GobEncode()
+
+			Convey("Then expected bytes slice should be returned", func() {
+				So(err, ShouldBeNil)
+				So(len(buf), ShouldNotEqual, 0)
+
+			})
+		})
+	})
+}
+
+func TestBloomFilter_GobDecode(t *testing.T) {
+	Convey("Given bloom filter converted to gobs stream", t, func() {
+		m := 128
+		k := 2
+
+		b := New(m, k)
+
+		e := []byte("test")
+		b.Add(e)
+
+		buf, _ := b.GobEncode()
+
+		Convey("When decoding gobs stream", func() {
+			res := &BloomFilter{}
+			err := res.GobDecode(buf)
+
+			Convey("Then expected bytes slice should be returned", func() {
+				So(err, ShouldBeNil)
+				So(len(res.bits), ShouldEqual, 128)
+				So(res.k, ShouldEqual, b.k)
+				So(res.s, ShouldEqual, b.s)
+				So(res.Has([]byte("test")), ShouldBeTrue)
+
+			})
+		})
+	})
 }

@@ -12,7 +12,7 @@ func TestNewCountingFilter(t *testing.T) {
 		k := 5
 
 		Convey("When creating a new bloom filter", func() {
-			b := NewCountingFilter(m, k, nil)
+			b := NewCountingFilter(m, k)
 
 			Convey("Then created instance should be expected", func() {
 				So(b, ShouldNotBeNil)
@@ -30,7 +30,7 @@ func TestCountingFilter_Add(t *testing.T) {
 		m := 128
 		k := 5
 
-		b := NewCountingFilter(m, k, nil)
+		b := NewCountingFilter(m, k)
 
 		Convey("When adding a new element", func() {
 			e := []byte("test")
@@ -57,7 +57,7 @@ func TestCountingFilter_Remove(t *testing.T) {
 		m := 128
 		k := 5
 
-		b := NewCountingFilter(m, k, nil)
+		b := NewCountingFilter(m, k)
 
 		e := []byte("test")
 		b.Add(e)
@@ -94,6 +94,34 @@ func TestCountingFilter_Remove(t *testing.T) {
 				}
 				So(count, ShouldEqual, k)
 				So(b.Has(e), ShouldBeTrue)
+
+			})
+		})
+	})
+}
+
+func TestCountingFilter_GobDecode(t *testing.T) {
+	Convey("Given bloom filter converted to gobs stream", t, func() {
+		m := 128
+		k := 2
+
+		b := NewCountingFilter(m, k)
+
+		e := []byte("test")
+		b.Add(e)
+
+		buf, _ := b.GobEncode()
+
+		Convey("When decoding gobs stream", func() {
+			res := &CountingFilter{}
+			err := res.GobDecode(buf)
+
+			Convey("Then expected bytes slice should be returned", func() {
+				So(err, ShouldBeNil)
+				So(len(res.bits), ShouldEqual, 128)
+				So(res.k, ShouldEqual, b.k)
+				So(res.s, ShouldEqual, b.s)
+				So(res.Has([]byte("test")), ShouldBeTrue)
 
 			})
 		})
