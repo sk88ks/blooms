@@ -9,8 +9,6 @@ import (
 	"github.com/spaolacci/murmur3"
 )
 
-var defaultHasher = murmur3.New64()
-
 // baseFilter is base for variety of filters
 type baseFilter struct {
 	mu sync.RWMutex
@@ -68,7 +66,7 @@ func getIndex(h1, h2 uint32, i, size int) int {
 
 // createHash creats 64bit hash
 func (b *baseFilter) createHash(element []byte) uint64 {
-	hasher := defaultHasher
+	hasher := murmur3.New64()
 	hasher.Reset()
 	hasher.Write(element)
 	return hasher.Sum64()
